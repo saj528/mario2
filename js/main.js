@@ -6,40 +6,6 @@ gameScene.init = function() {
   //player parameters
   this.playerSpeed = 150;
   this.jumpSpeed = -600;
-  this.levelData = {
-    platforms:[
-           {
-              "x": 72,
-              "y": 450,
-              "numTiles": 6,
-              "key": "block"
-           },
-           {
-              "x": 0,
-              "y": 330,
-              "numTiles": 8,
-              "key": "block"
-           },
-           {
-              "x": 72,
-              "y": 210,
-              "numTiles": 8,
-              "key": "block"
-           },
-           {
-              "x": 0,
-              "y": 90,
-              "numTiles": 7,
-              "key": "block"
-           },
-           {
-              "x": 0,
-              "y": 560,
-              "numTiles": 1,
-              "key": "ground"
-           }
-    ]
-  };
 };
 
 // load asset files for our game
@@ -72,13 +38,47 @@ gameScene.preload = function() {
 
 // executed once, after assets were loaded
 gameScene.create = function() {
+    if(!this.anims.get('walking'))
+    //player animation walking
+    this.anims.create({
+      key: 'walking',
+      frames:this.anims.generateFrameNames('player',{
+        frames:[0,1,2]
+      }),
+      yoyo: true,
+      frameRate: 12,
+      repeat: -1
+    })
+    if(!this.anims.get('burning'))
+    //fire aninmation
+    this.anims.create({
+      key: 'burning',
+      frames:this.anims.generateFrameNames('fire',{
+        frames:[0,1]
+      }),
+      frameRate: 4,
+      repeat: -1
+    })
+    
+  //add all level elements
+  this.setupLevel();
+  
   //world bounds
   this.physics.world.bounds.width = 360;
   this.physics.world.bounds.height = 700;
+
+
+  //camera bounds
+  this.cameras.main.setBounds(0,0,360,700);
+  this.cameras.main.startFollow(this.player);
   //platforms group
   
-  //add all level elements
-  this.setupLevel();
+
+
+  this.physics.add.collider([this.player,this.goal],this.platforms);
+
+  //checks overlap
+  this.physics.add.overlap(this.player,[this.fires,this.goal], this.restartGame, null, this);
   //1) adding existing sprites to the physics system
   //sprite creation
   //let ground = this.add.sprite(180,604,'ground');
@@ -91,22 +91,7 @@ gameScene.create = function() {
   //let platform = this.add.tileSprite(180, 500,3 * 36, 1 * 30, 'block');
   //this.physics.add.existing(platform,true);
   //this.platforms.add(platform)
-  //player animation walking
-  this.anims.create({
-    key: 'walking',
-    frames:this.anims.generateFrameNames('player',{
-      frames:[0,1,2]
-    }),
-    yoyo: true,
-    frameRate: 12,
-    repeat: -1
-  })
 
-  //player
-  this.player = this.add.sprite(180,400,'player',3);
-  this.physics.add.existing(this.player);
-  this.physics.add.collider(this.player,this.platforms);
-  this.player.body.setCollideWorldBounds(true);
   //disabling gravity - different from static
   //ground.body.allowGravity = false;
 
@@ -168,11 +153,11 @@ gameScene.update = function(){
 };
 
 gameScene.setupLevel = function(){
-  this.platforms = this.add.group();
-
   //load json data
   this.levelData = this.cache.json.get('levelData')
   //create all the platforms
+  //staticgroups are better for performance than plain groups i.e. .group()
+  this.platforms = this.physics.add.staticGroup();
   for(let i = 0; i < this.levelData.platforms.length; i++){
     let current = this.levelData.platforms[i];
     
@@ -194,7 +179,60 @@ gameScene.setupLevel = function(){
     //add to the group
     this.platforms.add(newObj)
   }
+
+  //create all the fire
+  //must give basic physics group properties
+  this.fires = this.physics.add.group({
+    allowGravity: false,
+    immovable: true
+  });
+  for(let i = 0; i < this.levelData.fires.length; i++){
+    let current = this.levelData.fires[i];
+     
+    let newObj = this.add.sprite(current.x, current.y,'fire').setOrigin(0,0)
+    //let newObj = this.fires.create(current.x, current.y,'fire').setOrigin(0,0).setOffset()
+    //enable physics for plain group i.e. .group()
+    //this.physics.add.existing(newObj);
+    //newObj.body.allowGravity = false;
+    //newObj.body.immovable = true;
+
+    //playing burning anim
+    newObj.anims.play('burning');
+    //add to the group
+    this.fires.add(newObj)
+
+    //for level creation
+    newObj.setInteractive();
+    this.input.setDraggable(newObj);
+    //listen to level creation
+    this.input.on('drag',function(pointer,gameObject,dragX,dragY){
+      gameObject.x = dragX
+      gameObject.y = dragY
+    });
+    //player creation
+    this.player = this.add.sprite(this.levelData.player.x,this.levelData.player.y,'player',3);
+    this.physics.add.existing(this.player);
+    this.player.body.setCollideWorldBounds(true);
+
+    //goal
+    this.goal = this.add.sprite(this.levelData.goal.x, this.levelData.goal.y, 'goal')
+    this.physics.add.existing(this.goal);
+
+   };
+
 };
+
+//restart game and you won
+gameScene.restartGame = function(sourceSprite,targetSprite){
+  //fade out camera
+  this.cameras.main.fade(500)
+  //when fadeout is complete restart the game
+  this.cameras.main.on('camerafadeoutcomplete',function(camera,effect){
+  //restart the scene
+  this.scene.restart();
+  },this);
+};
+
 
 // our game's configuration
 let config = {
