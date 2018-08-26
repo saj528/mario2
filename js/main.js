@@ -63,22 +63,14 @@ gameScene.create = function() {
   //add all level elements
   this.setupLevel();
   
-  //world bounds
-  this.physics.world.bounds.width = 360;
-  this.physics.world.bounds.height = 700;
+  //initiate barrel spawner
+  this.setSpawner();
 
-
-  //camera bounds
-  this.cameras.main.setBounds(0,0,360,700);
-  this.cameras.main.startFollow(this.player);
   //platforms group
-  
-
-
-  this.physics.add.collider([this.player,this.goal],this.platforms);
+  this.physics.add.collider([this.player,this.goal,this.barrels],this.platforms);
 
   //checks overlap
-  this.physics.add.overlap(this.player,[this.fires,this.goal], this.restartGame, null, this);
+  this.physics.add.overlap(this.player,[this.fires,this.goal,this.barrels], this.restartGame, null, this);
   //1) adding existing sprites to the physics system
   //sprite creation
   //let ground = this.add.sprite(180,604,'ground');
@@ -155,6 +147,9 @@ gameScene.update = function(){
 gameScene.setupLevel = function(){
   //load json data
   this.levelData = this.cache.json.get('levelData')
+  //world bounds
+  this.physics.world.bounds.width = this.levelData.world.width;
+  this.physics.world.bounds.height = this.levelData.world.height;
   //create all the platforms
   //staticgroups are better for performance than plain groups i.e. .group()
   this.platforms = this.physics.add.staticGroup();
@@ -184,7 +179,7 @@ gameScene.setupLevel = function(){
   //must give basic physics group properties
   this.fires = this.physics.add.group({
     allowGravity: false,
-    immovable: true
+    immovable: true,
   });
   for(let i = 0; i < this.levelData.fires.length; i++){
     let current = this.levelData.fires[i];
@@ -212,13 +207,18 @@ gameScene.setupLevel = function(){
    };
 
     //player creation
-      this.player = this.add.sprite(this.levelData.player.x,this.levelData.player.y,'player',3);
-      this.physics.add.existing(this.player);
-      this.player.body.setCollideWorldBounds(true);
+    this.player = this.add.sprite(this.levelData.player.x,this.levelData.player.y,'player',3);
+    this.physics.add.existing(this.player);
+    this.player.body.setCollideWorldBounds(true);
+
+    //camera bounds
+    this.cameras.main.setBounds(0,0,360,700);
+    this.cameras.main.startFollow(this.player);
    
-      //goal
-      this.goal = this.add.sprite(this.levelData.goal.x, this.levelData.goal.y, 'goal')
-      this.physics.add.existing(this.goal);
+    //goal
+    this.goal = this.add.sprite(this.levelData.goal.x, this.levelData.goal.y, 'goal')
+    this.physics.add.existing(this.goal);
+
 
 };
 
@@ -231,6 +231,43 @@ gameScene.restartGame = function(sourceSprite,targetSprite){
   //restart the scene
   this.scene.restart();
   },this);
+};
+
+//generation of barrels
+gameScene.setSpawner = function(){
+  // barrel group
+  this.barrels = this.physics.add.group({
+    bounceY: 0.1,
+    bounceX: 1,
+    collideWorldBounds:true
+  });
+  //spawn barrels
+  let spawningEvent = this.time.addEvent({
+    delay: this.levelData.spawner.interval,
+    loop: true,
+    callbackScope:this,
+    callback: function(){
+      //create a barrel
+      let barrel = this.barrels.get(this.goal.x,this.goal.y,'barrel');
+
+      //reactivate
+      barrel.setActive(true);
+      barrel.setVisible(true);
+      barrel.body.enable = true;
+      //set barrel properties
+      barrel.setVelocityX(this.levelData.spawner.speed)
+      //duration
+      this.time.addEvent({
+        delay:this.levelData.spawner.lifespan,
+        repeat:0,
+        callbackScope:this,
+        callback:function(){
+          this.barrels.killAndHide(barrel);
+          barrel.body.enable = false;
+        }
+      })
+    }
+  });
 };
 
 
