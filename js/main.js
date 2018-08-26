@@ -209,16 +209,16 @@ gameScene.setupLevel = function(){
       gameObject.x = dragX
       gameObject.y = dragY
     });
-    //player creation
-    this.player = this.add.sprite(this.levelData.player.x,this.levelData.player.y,'player',3);
-    this.physics.add.existing(this.player);
-    this.player.body.setCollideWorldBounds(true);
-
-    //goal
-    this.goal = this.add.sprite(this.levelData.goal.x, this.levelData.goal.y, 'goal')
-    this.physics.add.existing(this.goal);
-
    };
+
+    //player creation
+      this.player = this.add.sprite(this.levelData.player.x,this.levelData.player.y,'player',3);
+      this.physics.add.existing(this.player);
+      this.player.body.setCollideWorldBounds(true);
+   
+      //goal
+      this.goal = this.add.sprite(this.levelData.goal.x, this.levelData.goal.y, 'goal')
+      this.physics.add.existing(this.goal);
 
 };
 
